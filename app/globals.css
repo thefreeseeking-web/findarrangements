@@ -2,14 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  --brand-primary: #7a2e4d;   /* deep berry — original palette, not copied from any competitor */
-  --brand-accent: #e8b84b;    /* warm gold */
-  --brand-bg: #fdf8f4;
+  --bg-deep: #1a1014;
+  --surface: #241620;
+  --gold: #c9a35f;
+  --berry: #7d2f4d;
+  --berry-bright: #9c3f63;
+  --cream: #f2e8dc;
+  --muted: #b89a8a;
 }
 
 body {
-  background-color: var(--brand-bg);
-  color: #2a1f24;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  background-color: var(--bg-deep);
+  color: var(--cream);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.gold-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.gold-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.15em;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
 }
