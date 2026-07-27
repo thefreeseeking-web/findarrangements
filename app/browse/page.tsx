@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Nav from '../components/Nav';
 import { createClient } from '@/lib/supabaseClient';
+import Nav from '../components/Nav';
 
 type Profile = {
   id: string;
@@ -14,6 +14,7 @@ type Profile = {
   city: string | null;
   country: string | null;
   photoUrl: string | null;
+  last_seen: string | null;
 };
 
 const REPORT_REASONS = [
@@ -23,6 +24,17 @@ const REPORT_REASONS = [
   'Harassment or abuse',
   'Other',
 ];
+
+const ONLINE_MINUTES = 5;
+const RECENT_MINUTES = 60;
+
+function getStatus(lastSeen: string | null): 'online' | 'recent' | 'offline' {
+  if (!lastSeen) return 'offline';
+  const diffMin = (Date.now() - new Date(lastSeen).getTime()) / 60000;
+  if (diffMin < ONLINE_MINUTES) return 'online';
+  if (diffMin < RECENT_MINUTES) return 'recent';
+  return 'offline';
+}
 
 export default function BrowsePage() {
   const router = useRouter();
@@ -37,6 +49,8 @@ export default function BrowsePage() {
   const [reportReason, setReportReason] = useState(REPORT_REASONS[0]);
   const [reportDetails, setReportDetails] = useState('');
   const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'recent'>('all');
 
   useEffect(() => {
     async function load() {
@@ -54,7 +68,7 @@ export default function BrowsePage() {
 
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, display_name, role, bio, city, country')
+        .select('id, display_name, role, bio, city, country, last_seen')
         .neq('id', authData.user.id)
         .limit(50);
 
@@ -123,14 +137,12 @@ export default function BrowsePage() {
 
   async function submitReport() {
     if (!userId || !reportTarget) return;
-
     await supabase.from('reports').insert({
       reporter_id: userId,
       reported_id: reportTarget.id,
       reason: reportReason,
       details: reportDetails,
     });
-
     setReportSubmitted(true);
   }
 
@@ -147,6 +159,24 @@ export default function BrowsePage() {
     sugar_mommy: 'Sugar Mommy',
   };
 
+  const filteredProfiles = useMemo(() => {
+    return profiles.filter((p) => {
+      const matchesSearch =
+        !searchText ||
+        p.display_name.toLowerCase().includes(searchText.toLowerCase()) ||
+        (p.city ?? '').toLowerCase().includes(searchText.toLowerCase()) ||
+        (p.bio ?? '').toLowerCase().includes(searchText.toLowerCase());
+
+      if (!matchesSearch) return false;
+
+      if (statusFilter === 'all') return true;
+      const status = getStatus(p.last_seen);
+      if (statusFilter === 'online') return status === 'online';
+      if (statusFilter === 'recent') return status === 'online' || status === 'recent';
+      return true;
+    });
+  }, [profiles, searchText, statusFilter]);
+
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-deep)' }}>
@@ -156,82 +186,119 @@ export default function BrowsePage() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-12" style={{ backgroundColor: 'var(--bg-deep)' }}>
+    <main className="min-h-screen px-6 pb-12" style={{ backgroundColor: 'var(--bg-deep)' }}>
       <Nav />
 
-      <h1 className="font-display text-3xl mb-8 text-center" style={{ color: 'var(--cream)' }}>
+      <h1 className="font-display text-3xl mb-6 text-center" style={{ color: 'var(--cream)' }}>
         Browse Members
       </h1>
 
+      <div className="max-w-5xl mx-auto mb-8 flex flex-wrap gap-3 items-center justify-center">
+        <input
+          type="text"
+          placeholder="Search by name, city, or bio..."
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          className="rounded-full px-4 py-2 bg-white/5 border border-white/10 text-sm w-64"
+          style={{ color: 'var(--cream)' }}
+        />
+        {(['all', 'online', 'recent'] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setStatusFilter(f)}
+            className="px-4 py-2 rounded-full text-xs font-semibold"
+            style={{
+              backgroundColor: statusFilter === f ? 'var(--gold)' : 'rgba(255,255,255,0.06)',
+              color: statusFilter === f ? '#1a1014' : 'var(--muted)',
+            }}
+          >
+            {f === 'all' ? 'All' : f === 'online' ? 'Online now' : 'Recently active'}
+          </button>
+        ))}
+      </div>
+
       {error && <p className="text-center text-red-300 mb-6">{error}</p>}
 
-      {profiles.length === 0 && !error && (
+      {filteredProfiles.length === 0 && !error && (
         <p className="text-center" style={{ color: 'var(--muted)' }}>
-          No other members yet — check back soon!
+          No members match this search yet.
         </p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-        {profiles.map((p) => (
-          <Link
-            href={`/profile/${p.id}`}
-            key={p.id}
-            className="rounded-2xl overflow-hidden shadow-lg flex flex-col transition-transform hover:-translate-y-1 hover:shadow-2xl"
-            style={{ backgroundColor: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            <div className="h-56 flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
-              {p.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.photoUrl} alt={p.display_name} className="w-full h-full object-cover" />
-              ) : (
-                <span style={{ color: 'var(--muted)' }}>No photo yet</span>
-              )}
-            </div>
-            <div className="p-4 flex-1 flex flex-col">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="font-semibold" style={{ color: 'var(--cream)' }}>
-                  {p.display_name}
-                </h2>
+        {filteredProfiles.map((p) => {
+          const status = getStatus(p.last_seen);
+          return (
+            <Link
+              href={`/profile/${p.id}`}
+              key={p.id}
+              className="rounded-2xl overflow-hidden shadow-lg flex flex-col transition-transform hover:-translate-y-1 hover:shadow-2xl"
+              style={{ backgroundColor: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <div className="h-56 relative flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
+                {p.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.photoUrl} alt={p.display_name} className="w-full h-full object-cover" />
+                ) : (
+                  <span style={{ color: 'var(--muted)' }}>No photo yet</span>
+                )}
                 <span
-                  className="text-xs px-2 py-1 rounded-full uppercase tracking-wide"
-                  style={{ backgroundColor: 'var(--berry)', color: 'var(--cream)', fontSize: '0.65rem' }}
+                  className="absolute top-2 left-2 text-[10px] px-2 py-1 rounded-full font-semibold uppercase"
+                  style={{
+                    backgroundColor:
+                      status === 'online' ? '#2e7d4f' : status === 'recent' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.4)',
+                    color: status === 'online' ? '#fff' : 'var(--muted)',
+                  }}
                 >
-                  {roleLabel[p.role] ?? p.role}
+                  {status === 'online' ? '● Online' : status === 'recent' ? 'Recently active' : 'Offline'}
                 </span>
               </div>
-              <p className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
-                {[p.city, p.country].filter(Boolean).join(', ')}
-              </p>
-              <p
-                className="text-sm mb-4 flex-1 overflow-hidden"
-                style={{ color: 'var(--muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
-              >
-                {p.bio || 'No bio yet.'}
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={(e) => handleLike(p.id, e)}
-                  disabled={likedIds.has(p.id)}
-                  className="flex-1 py-2 rounded-full font-semibold text-sm disabled:opacity-50"
-                  style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
+              <div className="p-4 flex-1 flex flex-col">
+                <div className="flex items-center justify-between mb-1">
+                  <h2 className="font-semibold" style={{ color: 'var(--cream)' }}>
+                    {p.display_name}
+                  </h2>
+                  <span
+                    className="text-xs px-2 py-1 rounded-full uppercase tracking-wide"
+                    style={{ backgroundColor: 'var(--berry)', color: 'var(--cream)', fontSize: '0.65rem' }}
+                  >
+                    {roleLabel[p.role] ?? p.role}
+                  </span>
+                </div>
+                <p className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
+                  {[p.city, p.country].filter(Boolean).join(', ')}
+                </p>
+                <p
+                  className="text-sm mb-4 flex-1 overflow-hidden"
+                  style={{ color: 'var(--muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
                 >
-                  {likedIds.has(p.id) ? 'Liked' : 'Like'}
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setReportTarget(p);
-                  }}
-                  className="px-3 py-2 rounded-full text-xs font-semibold border"
-                  style={{ borderColor: 'var(--muted)', color: 'var(--muted)' }}
-                >
-                  Report
-                </button>
+                  {p.bio || 'No bio yet.'}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={(e) => handleLike(p.id, e)}
+                    disabled={likedIds.has(p.id)}
+                    className="flex-1 py-2 rounded-full font-semibold text-sm disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
+                  >
+                    {likedIds.has(p.id) ? 'Liked' : 'Like'}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setReportTarget(p);
+                    }}
+                    className="px-3 py-2 rounded-full text-xs font-semibold border"
+                    style={{ borderColor: 'var(--muted)', color: 'var(--muted)' }}
+                  >
+                    Report
+                  </button>
+                </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
 
       {reportTarget && (
@@ -239,9 +306,7 @@ export default function BrowsePage() {
           <div className="max-w-sm w-full rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: 'var(--surface)' }}>
             {reportSubmitted ? (
               <>
-                <h3 className="font-display text-lg mb-3" style={{ color: 'var(--cream)' }}>
-                  Report submitted
-                </h3>
+                <h3 className="font-display text-lg mb-3" style={{ color: 'var(--cream)' }}>Report submitted</h3>
                 <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>
                   Thanks for helping keep the community safe. Our team will review this.
                 </p>
@@ -266,9 +331,7 @@ export default function BrowsePage() {
                     className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10"
                     style={{ color: 'var(--cream)', colorScheme: 'dark' }}
                   >
-                    {REPORT_REASONS.map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
+                    {REPORT_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </label>
                 <label className="block mb-5">
