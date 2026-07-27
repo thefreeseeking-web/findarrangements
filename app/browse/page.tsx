@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabaseClient';
 
 type Profile = {
@@ -45,7 +46,6 @@ export default function BrowsePage() {
       }
       setUserId(authData.user.id);
 
-      // Mark myself as "online now" for the admin panel
       await supabase
         .from('profiles')
         .update({ last_seen: new Date().toISOString() })
@@ -99,7 +99,9 @@ export default function BrowsePage() {
     load();
   }, []);
 
-  async function handleLike(likedId: string) {
+  async function handleLike(likedId: string, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
     if (!userId) return;
 
     setLikedIds((prev) => new Set(prev).add(likedId));
@@ -154,6 +156,15 @@ export default function BrowsePage() {
 
   return (
     <main className="min-h-screen px-6 py-12" style={{ backgroundColor: 'var(--bg-deep)' }}>
+      <nav className="flex items-center justify-between max-w-5xl mx-auto mb-10 flex-wrap gap-3">
+        <span className="font-display text-xl" style={{ color: 'var(--cream)' }}>FindArrangements</span>
+        <div className="flex items-center gap-5 text-sm">
+          <Link href="/browse" style={{ color: 'var(--gold)' }}>Browse</Link>
+          <Link href="/messages" style={{ color: 'var(--muted)' }}>Messages</Link>
+          <Link href="/profile/edit" style={{ color: 'var(--muted)' }}>Edit Profile</Link>
+        </div>
+      </nav>
+
       <h1 className="font-display text-3xl mb-8 text-center" style={{ color: 'var(--cream)' }}>
         Browse Members
       </h1>
@@ -168,7 +179,8 @@ export default function BrowsePage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         {profiles.map((p) => (
-          <div
+          <Link
+            href={`/profile/${p.id}`}
             key={p.id}
             className="rounded-2xl overflow-hidden shadow-lg flex flex-col"
             style={{ backgroundColor: 'var(--surface)' }}
@@ -198,7 +210,7 @@ export default function BrowsePage() {
               </p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleLike(p.id)}
+                  onClick={(e) => handleLike(p.id, e)}
                   disabled={likedIds.has(p.id)}
                   className="flex-1 py-2 rounded-full font-semibold text-sm disabled:opacity-50"
                   style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
@@ -206,7 +218,11 @@ export default function BrowsePage() {
                   {likedIds.has(p.id) ? 'Liked' : 'Like'}
                 </button>
                 <button
-                  onClick={() => setReportTarget(p)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setReportTarget(p);
+                  }}
                   className="px-3 py-2 rounded-full text-xs font-semibold border"
                   style={{ borderColor: 'var(--muted)', color: 'var(--muted)' }}
                 >
@@ -214,7 +230,7 @@ export default function BrowsePage() {
                 </button>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
