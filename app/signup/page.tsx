@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabaseClient';
 
 export default function SignupPage() {
@@ -72,7 +73,10 @@ export default function SignupPage() {
     'mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10 focus:outline-none focus:border-[var(--gold)]';
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6 py-16" style={{ backgroundColor: 'var(--bg-deep)' }}>
+    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-16" style={{ backgroundColor: 'var(--bg-deep)' }}>
+      <Link href="/" className="text-sm mb-6" style={{ color: 'var(--muted)' }}>
+        ← Back to Home
+      </Link>
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-md rounded-2xl p-8 shadow-2xl"
@@ -171,6 +175,13 @@ export default function SignupPage() {
           {loading ? 'Creating account...' : 'Create Free Account'}
         </button>
       </form>
+
+      <p className="text-sm mt-6 text-center" style={{ color: 'var(--muted)' }}>
+        Already have an account?{' '}
+        <Link href="/login" style={{ color: 'var(--gold)' }}>
+          Log in
+        </Link>
+      </p>
     </main>
   );
 }
