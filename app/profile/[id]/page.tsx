@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabaseClient';
+import Nav from '../../components/Nav';
 
 type FullProfile = {
   id: string;
@@ -128,8 +129,9 @@ export default function ProfileViewPage() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-12" style={{ backgroundColor: 'var(--bg-deep)' }}>
-      <div className="max-w-2xl mx-auto">
+    <main className="min-h-screen" style={{ backgroundColor: 'var(--bg-deep)' }}>
+      <Nav />
+      <div className="max-w-2xl mx-auto px-6 pb-12">
         <Link href="/browse" className="text-sm mb-6 inline-block" style={{ color: 'var(--muted)' }}>
           ← Back to Browse
         </Link>
