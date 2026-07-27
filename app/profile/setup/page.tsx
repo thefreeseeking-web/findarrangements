@@ -66,7 +66,7 @@ export default function ProfileSetupPage() {
         profile_id: userId,
         storage_path: filePath,
         is_primary: true,
-        moderation_status: 'pending', // reviewed before it shows publicly
+        moderation_status: 'approved', // auto-approved; report system + admin panel handle bad actors after the fact
       });
 
       if (photoRowError) {
@@ -155,7 +155,7 @@ export default function ProfileSetupPage() {
             style={{ color: 'var(--muted)' }}
           />
           <span className="text-xs block mt-1" style={{ color: 'var(--muted)' }}>
-            Your photo is reviewed before it appears publicly.
+            Your photo will be visible to other members immediately.
           </span>
         </label>
 
