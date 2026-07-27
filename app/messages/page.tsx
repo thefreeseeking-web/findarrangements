@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabaseClient';
+import Nav from '../components/Nav';
 
 type MatchRow = {
   matchId: string;
@@ -102,7 +103,9 @@ export default function MessagesListPage() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-12" style={{ backgroundColor: 'var(--bg-deep)' }}>
+    <main className="min-h-screen" style={{ backgroundColor: 'var(--bg-deep)' }}>
+      <Nav />
+      <div className="px-6 pb-12">
       <h1 className="font-display text-3xl mb-8 text-center" style={{ color: 'var(--cream)' }}>
         Messages
       </h1>
@@ -145,6 +148,7 @@ export default function MessagesListPage() {
           ))}
         </div>
       )}
+      </div>
     </main>
   );
 }
