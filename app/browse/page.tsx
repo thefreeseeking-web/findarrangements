@@ -14,6 +14,14 @@ type Profile = {
   photoUrl: string | null;
 };
 
+const REPORT_REASONS = [
+  'Fake profile / not a real person',
+  'Inappropriate photos',
+  'Asking for money upfront',
+  'Harassment or abuse',
+  'Other',
+];
+
 export default function BrowsePage() {
   const router = useRouter();
   const supabase = createClient();
@@ -23,6 +31,10 @@ export default function BrowsePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reportTarget, setReportTarget] = useState<Profile | null>(null);
+  const [reportReason, setReportReason] = useState(REPORT_REASONS[0]);
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportSubmitted, setReportSubmitted] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -33,7 +45,12 @@ export default function BrowsePage() {
       }
       setUserId(authData.user.id);
 
-      // Get profiles other than my own
+      // Mark myself as "online now" for the admin panel
+      await supabase
+        .from('profiles')
+        .update({ last_seen: new Date().toISOString() })
+        .eq('id', authData.user.id);
+
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, display_name, role, bio, city, country')
@@ -46,7 +63,6 @@ export default function BrowsePage() {
         return;
       }
 
-      // Get my existing likes so we can grey out already-liked profiles
       const { data: myLikes } = await supabase
         .from('likes')
         .select('liked_id')
@@ -54,7 +70,6 @@ export default function BrowsePage() {
 
       setLikedIds(new Set((myLikes ?? []).map((l) => l.liked_id)));
 
-      // For each profile, fetch their primary approved photo (if any) as a signed URL
       const withPhotos = await Promise.all(
         (profilesData ?? []).map(async (p) => {
           const { data: photoRow } = await supabase
@@ -87,7 +102,6 @@ export default function BrowsePage() {
   async function handleLike(likedId: string) {
     if (!userId) return;
 
-    // Optimistically mark as liked
     setLikedIds((prev) => new Set(prev).add(likedId));
 
     const { error: likeError } = await supabase.from('likes').insert({
@@ -96,13 +110,32 @@ export default function BrowsePage() {
     });
 
     if (likeError) {
-      // Roll back on failure
       setLikedIds((prev) => {
         const next = new Set(prev);
         next.delete(likedId);
         return next;
       });
     }
+  }
+
+  async function submitReport() {
+    if (!userId || !reportTarget) return;
+
+    await supabase.from('reports').insert({
+      reporter_id: userId,
+      reported_id: reportTarget.id,
+      reason: reportReason,
+      details: reportDetails,
+    });
+
+    setReportSubmitted(true);
+  }
+
+  function closeReportModal() {
+    setReportTarget(null);
+    setReportReason(REPORT_REASONS[0]);
+    setReportDetails('');
+    setReportSubmitted(false);
   }
 
   const roleLabel: Record<string, string> = {
@@ -163,18 +196,96 @@ export default function BrowsePage() {
               <p className="text-sm mb-4 flex-1" style={{ color: 'var(--muted)' }}>
                 {p.bio || 'No bio yet.'}
               </p>
-              <button
-                onClick={() => handleLike(p.id)}
-                disabled={likedIds.has(p.id)}
-                className="w-full py-2 rounded-full font-semibold text-sm disabled:opacity-50"
-                style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
-              >
-                {likedIds.has(p.id) ? 'Liked' : 'Like'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleLike(p.id)}
+                  disabled={likedIds.has(p.id)}
+                  className="flex-1 py-2 rounded-full font-semibold text-sm disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
+                >
+                  {likedIds.has(p.id) ? 'Liked' : 'Like'}
+                </button>
+                <button
+                  onClick={() => setReportTarget(p)}
+                  className="px-3 py-2 rounded-full text-xs font-semibold border"
+                  style={{ borderColor: 'var(--muted)', color: 'var(--muted)' }}
+                >
+                  Report
+                </button>
+              </div>
             </div>
           </div>
         ))}
       </div>
+
+      {reportTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
+          <div className="max-w-sm w-full rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: 'var(--surface)' }}>
+            {reportSubmitted ? (
+              <>
+                <h3 className="font-display text-lg mb-3" style={{ color: 'var(--cream)' }}>
+                  Report submitted
+                </h3>
+                <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>
+                  Thanks for helping keep the community safe. Our team will review this.
+                </p>
+                <button
+                  onClick={closeReportModal}
+                  className="w-full py-2.5 rounded-full font-semibold"
+                  style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
+                >
+                  Close
+                </button>
+              </>
+            ) : (
+              <>
+                <h3 className="font-display text-lg mb-4" style={{ color: 'var(--cream)' }}>
+                  Report {reportTarget.display_name}
+                </h3>
+                <label className="block mb-3">
+                  <span className="text-sm" style={{ color: 'var(--cream)' }}>Reason</span>
+                  <select
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                    className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10"
+                    style={{ color: 'var(--cream)', colorScheme: 'dark' }}
+                  >
+                    {REPORT_REASONS.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block mb-5">
+                  <span className="text-sm" style={{ color: 'var(--cream)' }}>Details (optional)</span>
+                  <textarea
+                    rows={3}
+                    value={reportDetails}
+                    onChange={(e) => setReportDetails(e.target.value)}
+                    className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10"
+                    style={{ color: 'var(--cream)' }}
+                  />
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    onClick={submitReport}
+                    className="flex-1 py-2.5 rounded-full font-semibold"
+                    style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
+                  >
+                    Submit Report
+                  </button>
+                  <button
+                    onClick={closeReportModal}
+                    className="px-4 py-2.5 rounded-full font-semibold border"
+                    style={{ borderColor: 'var(--muted)', color: 'var(--cream)' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
