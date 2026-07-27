@@ -1,8 +1,19 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+    <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center py-12">
+      <div className="w-full max-w-4xl rounded-3xl overflow-hidden mb-8 relative h-64 md:h-80">
+        <Image
+          src="/images/hero.jpg"
+          alt="Meet generous partners on FindArrangements"
+          fill
+          style={{ objectFit: 'cover' }}
+          priority
+        />
+      </div>
+
       <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--brand-primary)' }}>
         FindArrangements
       </h1>
