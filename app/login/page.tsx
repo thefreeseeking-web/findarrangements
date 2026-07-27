@@ -32,47 +32,53 @@ export default function LoginPage() {
     router.push('/browse');
   }
 
+  const inputClass =
+    'mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10 focus:outline-none focus:border-[var(--gold)]';
+
   return (
-    <main className="min-h-screen flex items-center justify-center px-6">
+    <main className="min-h-screen flex items-center justify-center px-6 py-16" style={{ backgroundColor: 'var(--bg-deep)' }}>
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md bg-white p-8 rounded-2xl shadow-md"
+        className="w-full max-w-md rounded-2xl p-8 shadow-2xl"
+        style={{ backgroundColor: 'var(--surface)' }}
       >
-        <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--brand-primary)' }}>
+        <h1 className="font-display text-2xl mb-6" style={{ color: 'var(--cream)' }}>
           Log in
         </h1>
 
         {error && (
-          <p className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded">{error}</p>
+          <p className="mb-4 text-sm p-3 rounded bg-red-900/40 text-red-200">{error}</p>
         )}
 
         <label className="block mb-3">
-          <span className="text-sm font-medium">Email</span>
+          <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>Email</span>
           <input
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full border rounded-lg px-3 py-2"
+            className={inputClass}
+            style={{ color: 'var(--cream)' }}
           />
         </label>
 
         <label className="block mb-6">
-          <span className="text-sm font-medium">Password</span>
+          <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>Password</span>
           <input
             type="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full border rounded-lg px-3 py-2"
+            className={inputClass}
+            style={{ color: 'var(--cream)' }}
           />
         </label>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 rounded-full text-white font-semibold disabled:opacity-50"
-          style={{ backgroundColor: 'var(--brand-primary)' }}
+          className="w-full py-3 rounded-full font-semibold disabled:opacity-50"
+          style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
         >
           {loading ? 'Logging in...' : 'Log In'}
         </button>
