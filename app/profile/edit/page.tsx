@@ -98,18 +98,30 @@ export default function ProfileEditPage() {
       }
 
       // Unset the old primary photo, then insert the new one as primary
-      await supabase
+      const { error: unsetError } = await supabase
         .from('photos')
         .update({ is_primary: false })
         .eq('profile_id', userId)
         .eq('is_primary', true);
 
-      await supabase.from('photos').insert({
+      if (unsetError) {
+        setError(`Couldn't update old photo: ${unsetError.message}`);
+        setSaving(false);
+        return;
+      }
+
+      const { error: insertError } = await supabase.from('photos').insert({
         profile_id: userId,
         storage_path: filePath,
         is_primary: true,
         moderation_status: 'approved',
       });
+
+      if (insertError) {
+        setError(`Couldn't save photo record: ${insertError.message}`);
+        setSaving(false);
+        return;
+      }
     }
 
     setSaving(false);
