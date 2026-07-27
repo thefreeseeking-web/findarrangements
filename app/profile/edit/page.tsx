@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabaseClient';
+import Nav from '../../components/Nav';
 
 export default function ProfileEditPage() {
   const router = useRouter();
@@ -123,15 +125,28 @@ export default function ProfileEditPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6 py-16" style={{ backgroundColor: 'var(--bg-deep)' }}>
+    <main className="min-h-screen" style={{ backgroundColor: 'var(--bg-deep)' }}>
+      <Nav />
+      <div className="flex items-center justify-center px-6 pb-16">
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-md rounded-2xl p-8 shadow-2xl"
         style={{ backgroundColor: 'var(--surface)' }}
       >
-        <h1 className="font-display text-2xl mb-2" style={{ color: 'var(--cream)' }}>
-          Edit your profile
-        </h1>
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <h1 className="font-display text-2xl" style={{ color: 'var(--cream)' }}>
+            Edit your profile
+          </h1>
+          {userId && (
+            <Link
+              href={`/profile/${userId}`}
+              className="text-xs font-semibold"
+              style={{ color: 'var(--gold)' }}
+            >
+              Preview my profile →
+            </Link>
+          )}
+        </div>
         <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>
           Update anything you skipped or want to change.
         </p>
@@ -227,6 +242,7 @@ export default function ProfileEditPage() {
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </form>
+      </div>
     </main>
   );
 }
