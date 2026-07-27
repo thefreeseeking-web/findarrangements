@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Nav from '../components/Nav';
 import { createClient } from '@/lib/supabaseClient';
 
 type Profile = {
@@ -156,14 +157,7 @@ export default function BrowsePage() {
 
   return (
     <main className="min-h-screen px-6 py-12" style={{ backgroundColor: 'var(--bg-deep)' }}>
-      <nav className="flex items-center justify-between max-w-5xl mx-auto mb-10 flex-wrap gap-3">
-        <span className="font-display text-xl" style={{ color: 'var(--cream)' }}>FindArrangements</span>
-        <div className="flex items-center gap-5 text-sm">
-          <Link href="/browse" style={{ color: 'var(--gold)' }}>Browse</Link>
-          <Link href="/messages" style={{ color: 'var(--muted)' }}>Messages</Link>
-          <Link href="/profile/edit" style={{ color: 'var(--muted)' }}>Edit Profile</Link>
-        </div>
-      </nav>
+      <Nav />
 
       <h1 className="font-display text-3xl mb-8 text-center" style={{ color: 'var(--cream)' }}>
         Browse Members
@@ -182,8 +176,8 @@ export default function BrowsePage() {
           <Link
             href={`/profile/${p.id}`}
             key={p.id}
-            className="rounded-2xl overflow-hidden shadow-lg flex flex-col"
-            style={{ backgroundColor: 'var(--surface)' }}
+            className="rounded-2xl overflow-hidden shadow-lg flex flex-col transition-transform hover:-translate-y-1 hover:shadow-2xl"
+            style={{ backgroundColor: 'var(--surface)', border: '1px solid rgba(255,255,255,0.06)' }}
           >
             <div className="h-56 flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
               {p.photoUrl ? (
@@ -198,14 +192,20 @@ export default function BrowsePage() {
                 <h2 className="font-semibold" style={{ color: 'var(--cream)' }}>
                   {p.display_name}
                 </h2>
-                <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: 'var(--berry)', color: 'var(--cream)' }}>
+                <span
+                  className="text-xs px-2 py-1 rounded-full uppercase tracking-wide"
+                  style={{ backgroundColor: 'var(--berry)', color: 'var(--cream)', fontSize: '0.65rem' }}
+                >
                   {roleLabel[p.role] ?? p.role}
                 </span>
               </div>
               <p className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
                 {[p.city, p.country].filter(Boolean).join(', ')}
               </p>
-              <p className="text-sm mb-4 flex-1" style={{ color: 'var(--muted)' }}>
+              <p
+                className="text-sm mb-4 flex-1 overflow-hidden"
+                style={{ color: 'var(--muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+              >
                 {p.bio || 'No bio yet.'}
               </p>
               <div className="flex gap-2">
