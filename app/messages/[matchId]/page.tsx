@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabaseClient';
+import Nav from '../../components/Nav';
 
 type Message = {
   id: string;
@@ -19,6 +20,7 @@ export default function ChatThreadPage() {
   const supabase = createClient();
 
   const [myId, setMyId] = useState<string | null>(null);
+  const [otherId, setOtherId] = useState<string | null>(null);
   const [otherName, setOtherName] = useState('Member');
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -35,7 +37,6 @@ export default function ChatThreadPage() {
       }
       setMyId(authData.user.id);
 
-      // Confirm this match belongs to me, and figure out who the other person is
       const { data: matchRow } = await supabase
         .from('matches')
         .select('profile_one_id, profile_two_id')
@@ -52,13 +53,14 @@ export default function ChatThreadPage() {
       }
       setAuthorized(true);
 
-      const otherId =
+      const otherUserId =
         matchRow.profile_one_id === authData.user.id ? matchRow.profile_two_id : matchRow.profile_one_id;
+      setOtherId(otherUserId);
 
       const { data: otherProfile } = await supabase
         .from('profiles')
         .select('display_name')
-        .eq('id', otherId)
+        .eq('id', otherUserId)
         .maybeSingle();
       setOtherName(otherProfile?.display_name ?? 'Member');
 
@@ -70,12 +72,19 @@ export default function ChatThreadPage() {
 
       setMessages(existingMessages ?? []);
       setLoading(false);
+
+      // Mark every message from the other person as read now that we've opened this thread
+      await supabase
+        .from('messages')
+        .update({ read: true })
+        .eq('match_id', matchId)
+        .neq('sender_id', authData.user.id)
+        .eq('read', false);
     }
 
     load();
   }, [matchId]);
 
-  // Realtime subscription: new messages appear instantly for both people
   useEffect(() => {
     const channel = supabase
       .channel(`messages-${matchId}`)
@@ -84,6 +93,13 @@ export default function ChatThreadPage() {
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_id=eq.${matchId}` },
         (payload) => {
           setMessages((prev) => [...prev, payload.new as Message]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'messages', filter: `match_id=eq.${matchId}` },
+        (payload) => {
+          setMessages((prev) => prev.filter((m) => m.id !== (payload.old as Message).id));
         }
       )
       .subscribe();
@@ -109,8 +125,11 @@ export default function ChatThreadPage() {
       sender_id: myId,
       content,
     });
-    // No need to manually add to state — the realtime subscription above
-    // will pick up our own insert too and add it automatically.
+  }
+
+  async function handleDelete(messageId: string) {
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    await supabase.from('messages').delete().eq('id', messageId);
   }
 
   if (loading) {
@@ -131,9 +150,14 @@ export default function ChatThreadPage() {
 
   return (
     <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg-deep)' }}>
-      <div className="px-6 py-4 border-b border-white/10 flex items-center gap-3">
-        <Link href="/messages" style={{ color: 'var(--muted)' }}>←</Link>
-        <h1 className="font-display text-xl" style={{ color: 'var(--cream)' }}>{otherName}</h1>
+      <Nav />
+      <div className="px-6 pb-4 flex items-center gap-3 max-w-2xl w-full mx-auto">
+        <Link href="/messages" style={{ color: 'var(--muted)' }}>← Messages</Link>
+        {otherId && (
+          <Link href={`/profile/${otherId}`} className="font-display text-xl" style={{ color: 'var(--cream)' }}>
+            {otherName}
+          </Link>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-3 max-w-2xl w-full mx-auto">
@@ -145,7 +169,17 @@ export default function ChatThreadPage() {
         {messages.map((m) => {
           const mine = m.sender_id === myId;
           return (
-            <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+            <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'} group`}>
+              {mine && (
+                <button
+                  onClick={() => handleDelete(m.id)}
+                  className="opacity-0 group-hover:opacity-100 text-xs mr-2 self-center"
+                  style={{ color: 'var(--muted)' }}
+                  title="Delete message"
+                >
+                  🗑
+                </button>
+              )}
               <div
                 className="max-w-xs px-4 py-2 rounded-2xl text-sm"
                 style={{
