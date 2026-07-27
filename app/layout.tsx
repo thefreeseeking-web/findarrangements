@@ -2,9 +2,9 @@ import './globals.css';
 import AgeGate from './components/AgeGate';
 
 export const metadata = {
-  title: 'FindArrangements — 100% Free Arrangement Dating',
+  title: 'FindArrangements — Free Sugar Daddy & Sugar Baby Dating Site',
   description:
-    'Meet generous partners and ambitious companions. Completely free — no credits, no subscriptions, no paywalls.',
+    'The free sugar dating site for Sugar Daddies, Sugar Mommies, and Sugar Babies. No credits, no subscriptions, no paywalls — 100% free.',
 };
 
 export default function RootLayout({
