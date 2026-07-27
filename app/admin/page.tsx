@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabaseClient';
+import Nav from '../components/Nav';
 
 type Report = {
   id: string;
@@ -159,6 +160,7 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen px-6 py-12" style={{ backgroundColor: 'var(--bg-deep)' }}>
+      <Nav />
       <h1 className="font-display text-3xl mb-8" style={{ color: 'var(--cream)' }}>
         Admin Dashboard
       </h1>
