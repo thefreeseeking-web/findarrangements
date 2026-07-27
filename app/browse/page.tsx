@@ -173,7 +173,7 @@ export default function BrowsePage() {
             className="rounded-2xl overflow-hidden shadow-lg flex flex-col"
             style={{ backgroundColor: 'var(--surface)' }}
           >
-            <div className="h-56 bg-black/30 flex items-center justify-center">
+            <div className="h-56 flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
               {p.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={p.photoUrl} alt={p.display_name} className="w-full h-full object-cover" />
