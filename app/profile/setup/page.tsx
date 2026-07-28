@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabaseClient';
+import { COUNTRIES, STATES_BY_COUNTRY } from '@/lib/locationData';
 
 export default function ProfileSetupPage() {
   const router = useRouter();
@@ -111,39 +112,48 @@ export default function ProfileSetupPage() {
           />
         </label>
 
+        <label className="block mb-4">
+          <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>Country</span>
+          <select
+            value={country}
+            onChange={(e) => {
+              setCountry(e.target.value);
+              setRegion('');
+            }}
+            className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10"
+            style={{ color: 'var(--cream)', colorScheme: 'dark' }}
+          >
+            <option value="">Select country...</option>
+            {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+
         <div className="grid grid-cols-2 gap-3 mb-4">
+          <label className="block">
+            <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>State/Province</span>
+            <select
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              disabled={!country}
+              className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10 disabled:opacity-40"
+              style={{ color: 'var(--cream)', colorScheme: 'dark' }}
+            >
+              <option value="">Select...</option>
+              {(STATES_BY_COUNTRY[country] ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
           <label className="block">
             <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>City</span>
             <input
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10"
-              style={{ color: 'var(--cream)' }}
-            />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>Region/State</span>
-            <input
-              type="text"
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
+              placeholder="If not listed, type it here"
               className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10"
               style={{ color: 'var(--cream)' }}
             />
           </label>
         </div>
-
-        <label className="block mb-4">
-          <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>Country</span>
-          <input
-            type="text"
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10"
-            style={{ color: 'var(--cream)' }}
-          />
-        </label>
 
         <label className="block mb-6">
           <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>Profile photo</span>
