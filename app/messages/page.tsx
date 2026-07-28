@@ -132,9 +132,9 @@ export default function MessagesListPage() {
   }
 
   return (
-    <main className="min-h-screen px-6 pb-12" style={{ backgroundColor: 'var(--bg-deep)' }}>
+    <main className="min-h-screen px-4 sm:px-6 pb-12" style={{ backgroundColor: 'var(--bg-deep)' }}>
       <Nav />
-      <h1 className="font-display text-3xl mb-8 text-center" style={{ color: 'var(--cream)' }}>
+      <h1 className="font-display text-2xl sm:text-3xl mb-8 text-center" style={{ color: 'var(--cream)' }}>
         Messages
       </h1>
 
