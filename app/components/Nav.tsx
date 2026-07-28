@@ -12,6 +12,8 @@ export default function Nav() {
   const [myId, setMyId] = useState<string | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [newLikes, setNewLikes] = useState(0);
+  const [newViews, setNewViews] = useState(0);
+  const [newViews, setNewViews] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -43,6 +45,20 @@ export default function Nav() {
         .eq('liked_id', authData.user.id)
         .eq('seen', false);
       setNewLikes(likeCount ?? 0);
+
+      const { count: viewCount } = await supabase
+        .from('profile_views')
+        .select('id', { count: 'exact', head: true })
+        .eq('viewed_id', authData.user.id)
+        .eq('seen', false);
+      setNewViews(viewCount ?? 0);
+
+      const { count: viewCount } = await supabase
+        .from('profile_views')
+        .select('id', { count: 'exact', head: true })
+        .eq('viewed_id', authData.user.id)
+        .eq('seen', false);
+      setNewViews(viewCount ?? 0);
     }
     load();
   }, []);
@@ -60,6 +76,18 @@ export default function Nav() {
       <div className="flex items-center gap-3 sm:gap-5 text-xs sm:text-sm flex-wrap">
         <Link href="/browse" style={{ color: 'var(--muted)' }}>Browse</Link>
 
+        <Link href="/views" className="inline-flex items-center gap-1" style={{ color: 'var(--muted)' }}>
+          Views
+          {newViews > 0 && (
+            <span
+              className="text-[10px] rounded-full px-1.5 py-0.5 font-bold leading-none"
+              style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
+            >
+              {newViews}
+            </span>
+          )}
+        </Link>
+
         <Link href="/likes" className="inline-flex items-center gap-1" style={{ color: 'var(--muted)' }}>
           Likes
           {newLikes > 0 && (
@@ -68,6 +96,18 @@ export default function Nav() {
               style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
             >
               {newLikes}
+            </span>
+          )}
+        </Link>
+
+        <Link href="/views" className="inline-flex items-center gap-1" style={{ color: 'var(--muted)' }}>
+          Views
+          {newViews > 0 && (
+            <span
+              className="text-[10px] rounded-full px-1.5 py-0.5 font-bold leading-none"
+              style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
+            >
+              {newViews}
             </span>
           )}
         </Link>
