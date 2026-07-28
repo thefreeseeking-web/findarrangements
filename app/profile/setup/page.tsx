@@ -10,7 +10,11 @@ export default function ProfileSetupPage() {
   const supabase = createClient();
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [role, setRole] = useState<string>('sugar_baby');
   const [bio, setBio] = useState('');
+  const [lookingFor, setLookingFor] = useState('');
+  const [occupation, setOccupation] = useState('');
+  const [allowanceExpectation, setAllowanceExpectation] = useState('');
   const [city, setCity] = useState('');
   const [region, setRegion] = useState('');
   const [country, setCountry] = useState('');
@@ -26,6 +30,13 @@ export default function ProfileSetupPage() {
         return;
       }
       setUserId(data.user.id);
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .maybeSingle();
+      if (profileData?.role) setRole(profileData.role);
     }
     loadUser();
   }, []);
@@ -37,10 +48,17 @@ export default function ProfileSetupPage() {
     if (!userId) return;
     setLoading(true);
 
-    // 1. Save bio/location to the profile
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ bio, city, region, country })
+      .update({
+        bio,
+        looking_for: lookingFor,
+        occupation,
+        allowance_expectation: allowanceExpectation,
+        city,
+        region,
+        country,
+      })
       .eq('id', userId);
 
     if (updateError) {
@@ -49,13 +67,10 @@ export default function ProfileSetupPage() {
       return;
     }
 
-    // 2. Upload photo, if one was chosen
     if (photoFile) {
       const filePath = `${userId}/${Date.now()}-${photoFile.name}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('photos')
-        .upload(filePath, photoFile);
+      const { error: uploadError } = await supabase.storage.from('photos').upload(filePath, photoFile);
 
       if (uploadError) {
         setError(uploadError.message);
@@ -67,7 +82,7 @@ export default function ProfileSetupPage() {
         profile_id: userId,
         storage_path: filePath,
         is_primary: true,
-        moderation_status: 'approved', // auto-approved; report system + admin panel handle bad actors after the fact
+        moderation_status: 'approved',
       });
 
       if (photoRowError) {
@@ -80,6 +95,10 @@ export default function ProfileSetupPage() {
     router.push('/browse');
   }
 
+  const allowanceLabel = role === 'sugar_baby'
+    ? 'Expected weekly or monthly allowance'
+    : 'What you\'re able to offer weekly or monthly';
+
   return (
     <main className="min-h-screen flex items-center justify-center px-6 py-12" style={{ backgroundColor: 'var(--bg-deep)' }}>
       <form
@@ -91,14 +110,12 @@ export default function ProfileSetupPage() {
           Complete your profile
         </h1>
         <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>
-          This is what other members will see. You can update it anytime.
+          A complete profile gets far more messages — fill in as much as you can.
         </p>
 
-        {error && (
-          <p className="mb-4 text-sm p-3 rounded bg-red-900/40 text-red-200">{error}</p>
-        )}
+        {error && <p className="mb-4 text-sm p-3 rounded bg-red-900/40 text-red-200">{error}</p>}
 
-        <label className="block mb-4">
+        <label className="block mb-3">
           <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>About you</span>
           <textarea
             required
@@ -106,7 +123,44 @@ export default function ProfileSetupPage() {
             maxLength={500}
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            placeholder="Tell people what you're looking for..."
+            placeholder="Who are you? What's your lifestyle like?"
+            className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10"
+            style={{ color: 'var(--cream)' }}
+          />
+        </label>
+
+        <label className="block mb-3">
+          <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>What you're looking for</span>
+          <textarea
+            rows={3}
+            maxLength={300}
+            value={lookingFor}
+            onChange={(e) => setLookingFor(e.target.value)}
+            placeholder="e.g. Someone genuine for a mutually beneficial arrangement..."
+            className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10"
+            style={{ color: 'var(--cream)' }}
+          />
+        </label>
+
+        <label className="block mb-3">
+          <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>What you do for work</span>
+          <input
+            type="text"
+            value={occupation}
+            onChange={(e) => setOccupation(e.target.value)}
+            placeholder="e.g. Nursing student, Real estate investor..."
+            className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10"
+            style={{ color: 'var(--cream)' }}
+          />
+        </label>
+
+        <label className="block mb-4">
+          <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>{allowanceLabel}</span>
+          <input
+            type="text"
+            value={allowanceExpectation}
+            onChange={(e) => setAllowanceExpectation(e.target.value)}
+            placeholder="e.g. $1,000–$2,000/month"
             className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10"
             style={{ color: 'var(--cream)' }}
           />
@@ -116,10 +170,7 @@ export default function ProfileSetupPage() {
           <span className="text-sm font-medium" style={{ color: 'var(--cream)' }}>Country</span>
           <select
             value={country}
-            onChange={(e) => {
-              setCountry(e.target.value);
-              setRegion('');
-            }}
+            onChange={(e) => { setCountry(e.target.value); setRegion(''); }}
             className="mt-1 w-full rounded-lg px-3 py-2 bg-white/5 border border-white/10"
             style={{ color: 'var(--cream)', colorScheme: 'dark' }}
           >
