@@ -52,13 +52,6 @@ export default function Nav() {
         .eq('viewed_id', authData.user.id)
         .eq('seen', false);
       setNewViews(viewCount ?? 0);
-
-      const { count: viewCount } = await supabase
-        .from('profile_views')
-        .select('id', { count: 'exact', head: true })
-        .eq('viewed_id', authData.user.id)
-        .eq('seen', false);
-      setNewViews(viewCount ?? 0);
     }
     load();
   }, []);
