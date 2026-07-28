@@ -95,7 +95,11 @@ export default function ChatThreadPage() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_id=eq.${matchId}` },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
+          const incoming = payload.new as Message;
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === incoming.id)) return prev;
+            return [...prev, incoming];
+          });
         }
       )
       .on(
@@ -143,11 +147,30 @@ export default function ChatThreadPage() {
     const content = newMessage.trim();
     setNewMessage('');
 
-    await supabase.from('messages').insert({
-      match_id: matchId,
+    // Show it immediately for the sender, don't wait on the realtime round-trip
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage: Message = {
+      id: tempId,
       sender_id: myId,
       content,
-    });
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMessage]);
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('messages')
+      .insert({ match_id: matchId, sender_id: myId, content })
+      .select()
+      .single();
+
+    if (insertError) {
+      // Roll back the optimistic bubble if the send actually failed
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      return;
+    }
+
+    // Swap the temp bubble for the real row (real id, matches what realtime will send)
+    setMessages((prev) => prev.map((m) => (m.id === tempId ? (inserted as Message) : m)));
   }
 
   async function handleDelete(messageId: string) {
