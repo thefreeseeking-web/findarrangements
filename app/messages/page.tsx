@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabaseClient';
 import Nav from '../components/Nav';
+import ChatThread from '../components/ChatThread';
 
 type MatchRow = {
   matchId: string;
@@ -22,13 +23,15 @@ const roleLabel: Record<string, string> = {
   sugar_mommy: 'Sugar Mommy',
 };
 
-export default function MessagesListPage() {
+function MessagesInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const [myId, setMyId] = useState<string | null>(null);
   const [matches, setMatches] = useState<MatchRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<string | null>(searchParams.get('open'));
 
   async function load() {
     const { data: authData } = await supabase.auth.getUser();
@@ -105,21 +108,23 @@ export default function MessagesListPage() {
     load();
   }, []);
 
-  async function markRead(matchId: string, myUserId: string) {
-    await supabase
-      .from('messages')
-      .update({ read: true })
-      .eq('match_id', matchId)
-      .neq('sender_id', myUserId);
+  function openChat(matchId: string) {
+    setSelected(matchId);
+    // Mark that conversation's unread dot as cleared right away in the sidebar
+    setMatches((prev) => prev.map((m) => (m.matchId === matchId ? { ...m, hasUnread: false } : m)));
+  }
+
+  async function markRead(matchId: string, myUserId: string, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    await supabase.from('messages').update({ read: true }).eq('match_id', matchId).neq('sender_id', myUserId);
     load();
   }
 
-  async function markUnread(matchId: string, myUserId: string) {
-    await supabase
-      .from('messages')
-      .update({ read: false })
-      .eq('match_id', matchId)
-      .neq('sender_id', myUserId);
+  async function markUnread(matchId: string, myUserId: string, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    await supabase.from('messages').update({ read: false }).eq('match_id', matchId).neq('sender_id', myUserId);
     load();
   }
 
@@ -131,72 +136,90 @@ export default function MessagesListPage() {
     );
   }
 
-  return (
-    <main className="min-h-screen px-4 sm:px-6 pb-12" style={{ backgroundColor: 'var(--bg-deep)' }}>
-      <Nav />
-      <h1 className="font-display text-2xl sm:text-3xl mb-8 text-center" style={{ color: 'var(--cream)' }}>
-        Messages
-      </h1>
+  const selectedMatch = matches.find((m) => m.matchId === selected);
 
-      {matches.length === 0 ? (
-        <p className="text-center" style={{ color: 'var(--muted)' }}>
-          No matches yet — go like some profiles in{' '}
-          <Link href="/browse" style={{ color: 'var(--gold)' }}>Browse</Link>.
-        </p>
-      ) : (
-        <div className="max-w-lg mx-auto space-y-3">
-          {matches.map((m) => (
-            <div
-              key={m.matchId}
-              className="flex items-center gap-4 p-4 rounded-xl"
-              style={{ backgroundColor: 'var(--surface)' }}
-            >
-              <Link href={`/messages/${m.matchId}`} className="flex items-center gap-4 flex-1 overflow-hidden">
-                <div
-                  className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 relative"
-                  style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
-                >
+  return (
+    <main className="flex flex-col" style={{ backgroundColor: 'var(--bg-deep)', height: '100dvh' }}>
+      <div className="flex-shrink-0">
+        <Nav />
+      </div>
+
+      <div className="flex-1 min-h-0 max-w-5xl w-full mx-auto flex border-t border-white/10 rounded-t-2xl overflow-hidden" style={{ backgroundColor: 'var(--surface)' }}>
+        {/* CONVERSATION LIST — always visible on desktop, hidden on mobile once a chat is open */}
+        <div
+          className={`w-full sm:w-80 flex-shrink-0 border-r border-white/10 overflow-y-auto ${selected ? 'hidden sm:block' : 'block'}`}
+        >
+          {matches.length === 0 ? (
+            <p className="text-sm p-6 text-center" style={{ color: 'var(--muted)' }}>
+              No matches yet — go like some profiles in{' '}
+              <Link href="/browse" style={{ color: 'var(--gold)' }}>Browse</Link>.
+            </p>
+          ) : (
+            matches.map((m) => (
+              <button
+                key={m.matchId}
+                onClick={() => openChat(m.matchId)}
+                className="w-full flex items-center gap-3 p-4 text-left border-b border-white/5 hover:bg-white/5"
+                style={{ backgroundColor: selected === m.matchId ? 'rgba(201,163,95,0.1)' : 'transparent' }}
+              >
+                <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 relative" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
                   {m.photoUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.photoUrl} alt={m.otherName} className="w-full h-full object-cover" />
+                    <img src={m.photoUrl} alt={m.otherName} className="w-full h-full object-cover object-top" />
                   )}
                   {m.hasUnread && (
-                    <span
-                      className="absolute top-0 right-0 w-3 h-3 rounded-full border-2"
-                      style={{ backgroundColor: 'var(--gold)', borderColor: 'var(--surface)' }}
-                    />
+                    <span className="absolute top-0 right-0 w-3 h-3 rounded-full border-2" style={{ backgroundColor: 'var(--gold)', borderColor: 'var(--surface)' }} />
                   )}
                 </div>
                 <div className="flex-1 overflow-hidden">
                   <div className="flex items-center justify-between">
-                    <p className="font-semibold" style={{ color: 'var(--cream)' }}>
-                      {m.otherName}
-                    </p>
-                    <span className="text-xs" style={{ color: 'var(--gold)' }}>
-                      {roleLabel[m.otherRole] ?? m.otherRole}
-                    </span>
+                    <p className="font-semibold text-sm" style={{ color: 'var(--cream)' }}>{m.otherName}</p>
+                    <span className="text-[10px]" style={{ color: 'var(--gold)' }}>{roleLabel[m.otherRole] ?? m.otherRole}</span>
                   </div>
                   <p
-                    className="text-sm truncate"
+                    className="text-xs truncate"
                     style={{ color: m.hasUnread ? 'var(--cream)' : 'var(--muted)', fontWeight: m.hasUnread ? 600 : 400 }}
                   >
                     {m.lastMessage ?? 'Say hello!'}
                   </p>
                 </div>
-              </Link>
-              {myId && (
-                <button
-                  onClick={() => (m.hasUnread ? markRead(m.matchId, myId) : markUnread(m.matchId, myId))}
-                  className="text-xs flex-shrink-0"
-                  style={{ color: 'var(--muted)' }}
-                >
-                  {m.hasUnread ? 'Mark read' : 'Mark unread'}
-                </button>
-              )}
-            </div>
-          ))}
+                {myId && (
+                  <span
+                    onClick={(e) => (m.hasUnread ? markRead(m.matchId, myId, e) : markUnread(m.matchId, myId, e))}
+                    className="text-[10px] flex-shrink-0"
+                    style={{ color: 'var(--muted)' }}
+                  >
+                    {m.hasUnread ? 'Read' : 'Unread'}
+                  </span>
+                )}
+              </button>
+            ))
+          )}
         </div>
-      )}
+
+        {/* OPEN CHAT — full width on mobile once selected, side panel on desktop */}
+        <div className={`flex-1 flex flex-col min-h-0 ${selected ? 'flex' : 'hidden sm:flex'}`}>
+          {selectedMatch ? (
+            <ChatThread
+              key={selectedMatch.matchId}
+              matchId={selectedMatch.matchId}
+              onBack={() => setSelected(null)}
+            />
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <p style={{ color: 'var(--muted)' }}>Select a conversation to start chatting.</p>
+            </div>
+          )}
+        </div>
+      </div>
     </main>
+  );
+}
+
+export default function MessagesListPage() {
+  return (
+    <Suspense fallback={null}>
+      <MessagesInner />
+    </Suspense>
   );
 }
