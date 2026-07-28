@@ -124,7 +124,7 @@ export default function LikesPage() {
               <Link href={`/profile/${l.id}`} className="h-48 flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
                 {l.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={l.photoUrl} alt={l.display_name} className="w-full h-full object-cover" />
+                  <img src={l.photoUrl} alt={l.display_name} className="w-full h-full object-cover object-top" />
                 ) : (
                   <span style={{ color: 'var(--muted)' }}>No photo yet</span>
                 )}
