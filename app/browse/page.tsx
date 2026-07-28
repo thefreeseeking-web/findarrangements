@@ -16,6 +16,7 @@ type Profile = {
   photoUrl: string | null;
   last_seen: string | null;
   created_at: string;
+  is_verified: boolean;
 };
 
 const REPORT_REASONS = [
@@ -78,7 +79,7 @@ export default function BrowsePage() {
 
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, display_name, role, bio, city, country, last_seen, created_at')
+        .select('id, display_name, role, bio, city, country, last_seen, created_at, is_verified')
         .neq('id', authData.user.id)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -293,8 +294,9 @@ export default function BrowsePage() {
               </Link>
               <div className="p-4 flex-1 flex flex-col">
                 <div className="flex items-center justify-between mb-1">
-                  <Link href={`/profile/${p.id}`} className="font-semibold" style={{ color: 'var(--cream)' }}>
+                  <Link href={`/profile/${p.id}`} className="font-semibold flex items-center gap-1" style={{ color: 'var(--cream)' }}>
                     {p.display_name}
+                    {p.is_verified && <span title="Verified" style={{ color: '#4ade80' }}>✓</span>}
                   </Link>
                   <span
                     className="text-xs px-2 py-1 rounded-full uppercase tracking-wide"
