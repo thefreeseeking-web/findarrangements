@@ -26,7 +26,11 @@ export default function ChatThreadPage() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [otherTyping, setOtherTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sendTypingThrottle = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -73,7 +77,6 @@ export default function ChatThreadPage() {
       setMessages(existingMessages ?? []);
       setLoading(false);
 
-      // Mark every message from the other person as read now that we've opened this thread
       await supabase
         .from('messages')
         .update({ read: true })
@@ -102,16 +105,36 @@ export default function ChatThreadPage() {
           setMessages((prev) => prev.filter((m) => m.id !== (payload.old as Message).id));
         }
       )
+      .on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (payload.userId === myId) return;
+        setOtherTyping(true);
+        if (typingTimeout.current) clearTimeout(typingTimeout.current);
+        typingTimeout.current = setTimeout(() => setOtherTyping(false), 2500);
+      })
       .subscribe();
+
+    channelRef.current = channel;
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [matchId]);
+  }, [matchId, myId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, otherTyping]);
+
+  function handleTyping(value: string) {
+    setNewMessage(value);
+    if (!myId || !channelRef.current) return;
+
+    // Throttle so we don't spam broadcasts on every keystroke
+    if (sendTypingThrottle.current) return;
+    channelRef.current.send({ type: 'broadcast', event: 'typing', payload: { userId: myId } });
+    sendTypingThrottle.current = setTimeout(() => {
+      sendTypingThrottle.current = null;
+    }, 1200);
+  }
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -149,18 +172,20 @@ export default function ChatThreadPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg-deep)' }}>
-      <Nav />
-      <div className="px-6 pb-4 flex items-center gap-3 max-w-2xl w-full mx-auto">
-        <Link href="/messages" style={{ color: 'var(--muted)' }}>← Messages</Link>
+    <main className="flex flex-col" style={{ backgroundColor: 'var(--bg-deep)', height: '100dvh' }}>
+      <div className="flex-shrink-0">
+        <Nav />
+      </div>
+      <div className="px-4 sm:px-6 pb-3 flex items-center gap-3 max-w-2xl w-full mx-auto flex-shrink-0">
+        <Link href="/messages" style={{ color: 'var(--muted)' }}>←</Link>
         {otherId && (
-          <Link href={`/profile/${otherId}`} className="font-display text-xl" style={{ color: 'var(--cream)' }}>
+          <Link href={`/profile/${otherId}`} className="font-display text-lg sm:text-xl" style={{ color: 'var(--cream)' }}>
             {otherName}
           </Link>
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-3 max-w-2xl w-full mx-auto">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-2 max-w-2xl w-full mx-auto">
         {messages.length === 0 && (
           <p className="text-center text-sm" style={{ color: 'var(--muted)' }}>
             Say hello to {otherName}!
@@ -173,7 +198,7 @@ export default function ChatThreadPage() {
               {mine && (
                 <button
                   onClick={() => handleDelete(m.id)}
-                  className="opacity-0 group-hover:opacity-100 text-xs mr-2 self-center"
+                  className="opacity-0 group-hover:opacity-100 text-xs mr-2 self-center flex-shrink-0"
                   style={{ color: 'var(--muted)' }}
                   title="Delete message"
                 >
@@ -181,32 +206,52 @@ export default function ChatThreadPage() {
                 </button>
               )}
               <div
-                className="max-w-xs px-4 py-2 rounded-2xl text-sm"
+                className="max-w-[75%] sm:max-w-xs px-4 py-2 rounded-2xl text-sm break-words"
                 style={{
                   backgroundColor: mine ? 'var(--gold)' : 'var(--surface)',
                   color: mine ? '#1a1014' : 'var(--cream)',
                 }}
               >
                 {m.content}
+                <div
+                  className="text-[10px] mt-1 opacity-60"
+                  style={{ color: mine ? '#1a1014' : 'var(--muted)' }}
+                >
+                  {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
               </div>
             </div>
           );
         })}
+        {otherTyping && (
+          <div className="flex justify-start">
+            <div
+              className="px-4 py-2 rounded-2xl text-sm italic"
+              style={{ backgroundColor: 'var(--surface)', color: 'var(--muted)' }}
+            >
+              {otherName} is typing...
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSend} className="px-6 py-4 border-t border-white/10 flex gap-3 max-w-2xl w-full mx-auto">
+      <form
+        onSubmit={handleSend}
+        className="px-4 sm:px-6 py-3 border-t border-white/10 flex gap-2 sm:gap-3 max-w-2xl w-full mx-auto flex-shrink-0"
+        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+      >
         <input
           type="text"
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          onChange={(e) => handleTyping(e.target.value)}
           placeholder="Type a message..."
-          className="flex-1 rounded-full px-4 py-2.5 bg-white/5 border border-white/10"
+          className="flex-1 rounded-full px-4 py-2.5 bg-white/5 border border-white/10 text-sm"
           style={{ color: 'var(--cream)' }}
         />
         <button
           type="submit"
-          className="px-6 py-2.5 rounded-full font-semibold"
+          className="px-5 sm:px-6 py-2.5 rounded-full font-semibold text-sm"
           style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
         >
           Send
