@@ -53,11 +53,11 @@ export default function Nav() {
   }
 
   return (
-    <nav className="flex items-center justify-between max-w-5xl mx-auto mb-10 flex-wrap gap-3 px-6 pt-6">
-      <Link href="/browse" className="font-display text-xl" style={{ color: 'var(--cream)' }}>
+    <nav className="flex items-center justify-between max-w-5xl mx-auto mb-6 sm:mb-10 flex-wrap gap-x-4 gap-y-2 px-4 sm:px-6 pt-4 sm:pt-6">
+      <Link href="/browse" className="font-display text-lg sm:text-xl" style={{ color: 'var(--cream)' }}>
         FindArrangements
       </Link>
-      <div className="flex items-center gap-5 text-sm">
+      <div className="flex items-center gap-3 sm:gap-5 text-xs sm:text-sm flex-wrap">
         <Link href="/browse" style={{ color: 'var(--muted)' }}>Browse</Link>
 
         <Link href="/likes" className="relative" style={{ color: 'var(--muted)' }}>
