@@ -246,7 +246,7 @@ export default function ProfileViewPage() {
           <div className="h-64 sm:h-80" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
             {photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={photoUrl} alt={profile.display_name} className="w-full h-full object-cover object-top" />
+              <img src={photoUrl} alt={profile.display_name} className="w-full h-full object-cover" style={{ objectPosition: '50% 25%' }} />
             ) : (
               <div className="w-full h-full flex items-center justify-center" style={{ color: 'var(--muted)' }}>
                 No photo yet
