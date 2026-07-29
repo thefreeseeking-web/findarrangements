@@ -70,19 +70,29 @@ export default function BrowsePage() {
         router.push('/login');
         return;
       }
-      setUserId(authData.user.id);
+      const uid = authData.user.id;
+      setUserId(uid);
 
-      await supabase
-        .from('profiles')
-        .update({ last_seen: new Date().toISOString() })
-        .eq('id', authData.user.id);
+      // Fire-and-forget — don't make the user wait on this write before
+      // seeing anything on screen
+      supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', uid);
 
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, display_name, role, bio, city, country, last_seen, created_at, is_verified')
-        .neq('id', authData.user.id)
-        .order('created_at', { ascending: false })
-        .limit(200);
+      // These three are all independent — run them at the same time
+      const [profilesResult, likesResult, matchesResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, display_name, role, bio, city, country, last_seen, created_at, is_verified')
+          .neq('id', uid)
+          .order('created_at', { ascending: false })
+          .limit(200),
+        supabase.from('likes').select('liked_id').eq('liker_id', uid),
+        supabase
+          .from('matches')
+          .select('id, profile_one_id, profile_two_id')
+          .or(`profile_one_id.eq.${uid},profile_two_id.eq.${uid}`),
+      ]);
+
+      const { data: profilesData, error: profilesError } = profilesResult;
 
       if (profilesError) {
         setError(profilesError.message);
@@ -90,20 +100,11 @@ export default function BrowsePage() {
         return;
       }
 
-      const { data: myLikes } = await supabase
-        .from('likes')
-        .select('liked_id')
-        .eq('liker_id', authData.user.id);
-      setLikedIds(new Set((myLikes ?? []).map((l) => l.liked_id)));
-
-      const { data: myMatches } = await supabase
-        .from('matches')
-        .select('id, profile_one_id, profile_two_id')
-        .or(`profile_one_id.eq.${authData.user.id},profile_two_id.eq.${authData.user.id}`);
+      setLikedIds(new Set((likesResult.data ?? []).map((l) => l.liked_id)));
 
       const matchMap = new Map<string, string>();
-      (myMatches ?? []).forEach((m) => {
-        const otherId = m.profile_one_id === authData.user.id ? m.profile_two_id : m.profile_one_id;
+      (matchesResult.data ?? []).forEach((m) => {
+        const otherId = m.profile_one_id === uid ? m.profile_two_id : m.profile_one_id;
         matchMap.set(otherId, m.id);
       });
       setMatchedIds(matchMap);
