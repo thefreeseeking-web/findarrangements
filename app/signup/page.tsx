@@ -17,6 +17,7 @@ export default function SignupPage() {
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   function isAdult(dob: string) {
     if (!dob) return false;
@@ -44,6 +45,13 @@ export default function SignupPage() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          display_name: displayName,
+          role,
+          birthdate,
+        },
+      },
     });
 
     if (signUpError || !data.user) {
@@ -52,21 +60,18 @@ export default function SignupPage() {
       return;
     }
 
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: data.user.id,
-      display_name: displayName,
-      role,
-      birthdate,
-      is_verified_adult: true,
-    });
+    // The profile row is created automatically by a database trigger using
+    // the metadata above — no client-side insert needed, which avoids the
+    // "no session yet" timing issue when email confirmation is required.
 
-    if (profileError) {
-      setError(profileError.message);
+    if (data.session) {
+      // Email confirmation is off — user is logged in immediately
+      router.push('/profile/setup');
+    } else {
+      // Email confirmation is on — they need to check their inbox first
+      setAwaitingConfirmation(true);
       setLoading(false);
-      return;
     }
-
-    router.push('/profile/setup');
   }
 
   const inputClass =
@@ -77,6 +82,22 @@ export default function SignupPage() {
       <Link href="/" className="text-sm mb-6" style={{ color: 'var(--muted)' }}>
         ← Back to Home
       </Link>
+      {awaitingConfirmation ? (
+        <div
+          className="w-full max-w-md rounded-2xl p-8 shadow-2xl text-center"
+          style={{ backgroundColor: 'var(--surface)' }}
+        >
+          <h1 className="font-display text-2xl mb-4" style={{ color: 'var(--cream)' }}>
+            Check your email
+          </h1>
+          <p className="text-sm mb-2" style={{ color: 'var(--muted)' }}>
+            We sent a confirmation link to <strong style={{ color: 'var(--cream)' }}>{email}</strong>.
+          </p>
+          <p className="text-sm" style={{ color: 'var(--muted)' }}>
+            Click the link in that email, then come back and log in to finish setting up your profile.
+          </p>
+        </div>
+      ) : (
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-md rounded-2xl p-8 shadow-2xl"
@@ -175,6 +196,7 @@ export default function SignupPage() {
           {loading ? 'Creating account...' : 'Create Free Account'}
         </button>
       </form>
+      )}
 
       <p className="text-sm mt-6 text-center" style={{ color: 'var(--muted)' }}>
         Already have an account?{' '}
