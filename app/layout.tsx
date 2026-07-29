@@ -1,7 +1,7 @@
 import './globals.css';
 import AgeGate from './components/AgeGate';
 
-const siteUrl = 'https://findarrangements.com';
+const siteUrl = 'https://www.findarrangements.com';
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
