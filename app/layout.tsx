@@ -33,11 +33,20 @@ export const metadata = {
     url: siteUrl,
     siteName: 'FindArrangements',
     type: 'website',
+    images: [
+      {
+        url: '/images/hero.jpeg',
+        width: 1200,
+        height: 630,
+        alt: 'FindArrangements — Free Sugar Daddy & Sugar Baby Dating Site',
+      },
+    ],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'FindArrangements — 100% Free Sugar Daddy & Sugar Baby Dating Site',
     description: 'The only completely free sugar dating site. No credits, no subscriptions, no paywalls.',
+    images: ['/images/hero.jpeg'],
   },
   robots: {
     index: true,
