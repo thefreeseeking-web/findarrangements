@@ -59,18 +59,6 @@ export default function Nav() {
       <div className="flex items-center gap-3 sm:gap-5 text-xs sm:text-sm flex-wrap">
         <Link href="/browse" style={{ color: 'var(--muted)' }}>Browse</Link>
 
-        <Link href="/views" className="inline-flex items-center gap-1" style={{ color: 'var(--muted)' }}>
-          Views
-          {newViews > 0 && (
-            <span
-              className="text-[10px] rounded-full px-1.5 py-0.5 font-bold leading-none"
-              style={{ backgroundColor: 'var(--gold)', color: '#1a1014' }}
-            >
-              {newViews}
-            </span>
-          )}
-        </Link>
-
         <Link href="/likes" className="inline-flex items-center gap-1" style={{ color: 'var(--muted)' }}>
           Likes
           {newLikes > 0 && (
