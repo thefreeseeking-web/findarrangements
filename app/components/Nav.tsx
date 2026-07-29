@@ -13,45 +13,35 @@ export default function Nav() {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [newLikes, setNewLikes] = useState(0);
   const [newViews, setNewViews] = useState(0);
-  const [newViews, setNewViews] = useState(0);
 
   useEffect(() => {
     async function load() {
       const { data: authData } = await supabase.auth.getUser();
       if (!authData.user) return;
-      setMyId(authData.user.id);
+      const uid = authData.user.id;
+      setMyId(uid);
 
-      // Unread messages: messages in my matches sent by the other person, not yet read
-      const { data: myMatches } = await supabase
-        .from('matches')
-        .select('id')
-        .or(`profile_one_id.eq.${authData.user.id},profile_two_id.eq.${authData.user.id}`);
+      // Run all three notification checks at the same time instead of
+      // one after another — this alone cuts nav load time significantly.
+      const [matchesResult, likesResult, viewsResult] = await Promise.all([
+        supabase.from('matches').select('id').or(`profile_one_id.eq.${uid},profile_two_id.eq.${uid}`),
+        supabase.from('likes').select('id', { count: 'exact', head: true }).eq('liked_id', uid).eq('seen', false),
+        supabase.from('profile_views').select('id', { count: 'exact', head: true }).eq('viewed_id', uid).eq('seen', false),
+      ]);
 
-      const matchIds = (myMatches ?? []).map((m) => m.id);
+      setNewLikes(likesResult.count ?? 0);
+      setNewViews(viewsResult.count ?? 0);
+
+      const matchIds = (matchesResult.data ?? []).map((m) => m.id);
       if (matchIds.length > 0) {
         const { count } = await supabase
           .from('messages')
           .select('id', { count: 'exact', head: true })
           .in('match_id', matchIds)
-          .neq('sender_id', authData.user.id)
+          .neq('sender_id', uid)
           .eq('read', false);
         setUnreadMessages(count ?? 0);
       }
-
-      // New likes: people who liked me that I haven't seen yet
-      const { count: likeCount } = await supabase
-        .from('likes')
-        .select('id', { count: 'exact', head: true })
-        .eq('liked_id', authData.user.id)
-        .eq('seen', false);
-      setNewLikes(likeCount ?? 0);
-
-      const { count: viewCount } = await supabase
-        .from('profile_views')
-        .select('id', { count: 'exact', head: true })
-        .eq('viewed_id', authData.user.id)
-        .eq('seen', false);
-      setNewViews(viewCount ?? 0);
     }
     load();
   }, []);
