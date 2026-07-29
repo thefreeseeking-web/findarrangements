@@ -1,5 +1,6 @@
 import './globals.css';
 import AgeGate from './components/AgeGate';
+import AuthSync from './components/AuthSync';
 
 const siteUrl = 'https://www.findarrangements.com';
 
@@ -71,6 +72,7 @@ export default function RootLayout({
           }}
         />
         <AgeGate />
+        <AuthSync />
         {children}
       </body>
     </html>
